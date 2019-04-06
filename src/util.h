@@ -26,11 +26,21 @@
 #define _GNU_SOURCE
 #endif
 
+#ifdef __cplusplus
+#define BEGIN_C_HEADER extern "C" {
+#define END_C_HEADER }
+#else
+#define BEGIN_C_HEADER
+#define END_C_HEADER
+#endif
+
 #include <stddef.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdarg.h>
+
+BEGIN_C_HEADER
 
 #include "prim.h"
 
@@ -208,5 +218,7 @@ void file_unlock(int fd);
 void *map_file(int fd, size_t size);
 void unmap_file(void *ptr, size_t size);
 void make_dir(const char *path);
+
+END_C_HEADER
 
 #endif // _UTIL_H

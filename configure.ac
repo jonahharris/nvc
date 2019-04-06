@@ -41,6 +41,8 @@ AC_CHECK_HEADERS([execinfo.h sys/ptrace.h sys/sysctl.h sys/prctl.h])
 AC_CHECK_MEMBERS([struct stat.st_mtimespec.tv_nsec])
 AC_CHECK_MEMBERS([struct stat.st_mtim.tv_nsec])
 
+AX_CXX_COMPILE_STDCXX_14
+
 AX_CHECK_LINK_FLAG([-rdynamic],
   [RDYNAMIC_FLAG="-rdynamic"],
   [RDYNAMIC_FLAG=""])

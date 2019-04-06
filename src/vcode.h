@@ -23,6 +23,8 @@
 #include "prim.h"
 #include "rt/rt.h"
 
+BEGIN_C_HEADER
+
 typedef int32_t vcode_type_t;
 typedef int32_t vcode_block_t;
 typedef int32_t vcode_var_t;
@@ -466,5 +468,7 @@ vcode_reg_t emit_physical_map(ident_t name, size_t nelems,
 void emit_debug_info(const loc_t *loc);
 vcode_reg_t emit_range_null(vcode_reg_t left, vcode_reg_t right,
                             vcode_reg_t dir);
+
+END_C_HEADER
 
 #endif  // _VCODE_H

@@ -1,5 +1,5 @@
 //
-//  Copyright (C) 2011-2018  Nick Gasson
+//  Copyright (C) 2011-2019  Nick Gasson
 //
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -21,6 +21,8 @@
 #include "lib.h"
 #include "fbuf.h"
 #include "prim.h"
+
+BEGIN_C_HEADER
 
 typedef struct ident_wr_ctx *ident_wr_ctx_t;
 typedef struct ident_rd_ctx *ident_rd_ctx_t;
@@ -105,5 +107,7 @@ void ident_list_push(ident_list_t **list, ident_t i);
 void ident_list_free(ident_list_t *list);
 void _ident_list_cleanup(ident_list_t **list);
 bool ident_list_find(const ident_list_t *list, ident_t i);
+
+END_C_HEADER
 
 #endif // _IDENT_H
