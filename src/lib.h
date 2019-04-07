@@ -25,6 +25,8 @@
 #include "fbuf.h"
 #include "prim.h"
 
+BEGIN_C_HEADER
+
 typedef struct lib *lib_t;
 
 typedef uint64_t lib_mtime_t;
@@ -61,5 +63,6 @@ int lib_index_kind(lib_t lib, ident_t ident);
 typedef void (*lib_index_fn_t)(ident_t ident, int kind, void *context);
 void lib_walk_index(lib_t lib, lib_index_fn_t fn, void *context);
 
+END_C_HEADER
 
 #endif // _LIB_H

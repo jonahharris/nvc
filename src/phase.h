@@ -20,6 +20,8 @@
 
 #include "tree.h"
 
+BEGIN_C_HEADER
+
 typedef enum {
    EVAL_BOUNDS  = (1 << 0),
    EVAL_FCALL   = (1 << 1),
@@ -94,5 +96,7 @@ vcode_unit_t lower_thunk(tree_t fcall);
 
 // Lower an isolated function body
 vcode_unit_t lower_func(tree_t body);
+
+END_C_HEADER
 
 #endif  // _PHASE_H

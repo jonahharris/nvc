@@ -25,7 +25,9 @@
 
 #include <stdint.h>
 
-typedef enum port_mode {
+BEGIN_C_HEADER
+
+typedef enum {
    PORT_INVALID,
    PORT_IN,
    PORT_OUT,
@@ -34,7 +36,7 @@ typedef enum port_mode {
    PORT_LINKAGE
 } port_mode_t;
 
-typedef enum class {
+typedef enum {
    C_DEFAULT,
    C_SIGNAL,
    C_VARIABLE,
@@ -350,5 +352,7 @@ void tree_write_end(tree_wr_ctx_t ctx);
 tree_rd_ctx_t tree_read_begin(fbuf_t *f, const char *name);
 tree_t tree_read(tree_rd_ctx_t ctx);
 void tree_read_end(tree_rd_ctx_t ctx);
+
+END_C_HEADER
 
 #endif  // _TREE_H

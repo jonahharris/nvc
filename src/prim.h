@@ -21,6 +21,10 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#include "util.h"
+
+BEGIN_C_HEADER
+
 typedef struct trie *ident_t;
 
 typedef struct loc {
@@ -69,5 +73,7 @@ typedef struct vcode_unit *vcode_unit_t;
 typedef uint32_t netid_t;
 
 #define NETID_INVALID UINT32_MAX
+
+END_C_HEADER
 
 #endif  // _PRIM_H
