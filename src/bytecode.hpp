@@ -72,6 +72,8 @@ public:
       JMP  = 0x0b,     // Jump to address
       CBZ  = 0x0c,     // Compare and branch if zero
       CBNZ = 0x0d,     // Compare and branch if non-zero
+      MOVB = 0x0e,     // Move 8-bit literal to register
+      ADDB = 0x0f,     // Add 8-bit immediate to register
    };
 
    enum Condition : uint8_t {

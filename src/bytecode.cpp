@@ -84,6 +84,7 @@ namespace {
       void reg();
       void immed32();
       void immed16();
+      void immed8();
       void indirect();
       void jump_target();
       void condition();
@@ -199,9 +200,18 @@ void Compiler::compile_const(int op)
    const Mapping& result = map_vcode_reg(vcode_get_result(op));
    assert(result.kind == Mapping::REGISTER);
 
-   emit_u8(Bytecode::MOVW);
-   emit_reg(result.slot);
-   emit_i32(vcode_get_value(op));
+   int64_t value = vcode_get_value(op);
+
+   if (value >= INT8_MIN && value <= INT8_MAX) {
+      emit_u8(Bytecode::MOVB);
+      emit_reg(result.slot);
+      emit_u8(value);
+   }
+   else {
+      emit_u8(Bytecode::MOVW);
+      emit_reg(result.slot);
+      emit_i32(vcode_get_value(op));
+   }
 }
 
 void Compiler::compile_addi(int op)
@@ -216,9 +226,18 @@ void Compiler::compile_addi(int op)
    emit_reg(dst.slot);
    emit_reg(src.slot);
 
-   emit_u8(Bytecode::ADDW);
-   emit_reg(dst.slot);
-   emit_i32(vcode_get_value(op));
+   int64_t value = vcode_get_value(op);
+
+   if (value >= INT8_MIN && value <= INT8_MAX) {
+      emit_u8(Bytecode::ADDB);
+      emit_reg(dst.slot);
+      emit_u8(value);
+   }
+   else {
+      emit_u8(Bytecode::ADDW);
+      emit_reg(dst.slot);
+      emit_i32(value);
+   }
 }
 
 void Compiler::compile_return(int op)
@@ -430,6 +449,13 @@ void Dumper::immed16()
    pos_++;
 }
 
+void Dumper::immed8()
+{
+   col_ += printer_.print("%s%d", pos_ == 0 ? " " : ", ", *bptr_);
+   bptr_++;
+   pos_++;
+}
+
 void Dumper::jump_target()
 {
    assert(bptr_ + 2 <= bytecode_->bytes() + bytecode_->length());
@@ -453,6 +479,11 @@ void Dumper::diassemble_one()
       reg();
       immed32();
       break;
+   case Bytecode::MOVB:
+      opcode("MOVB");
+      reg();
+      immed8();
+      break;
    case Bytecode::RET:
       opcode("RET");
       break;
@@ -468,6 +499,11 @@ void Dumper::diassemble_one()
       opcode("ADDW");
       reg();
       immed32();
+      break;
+   case Bytecode::ADDB:
+      opcode("ADDB");
+      reg();
+      immed8();
       break;
    case Bytecode::STR:
       opcode("STR");

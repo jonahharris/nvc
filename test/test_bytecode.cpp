@@ -90,6 +90,8 @@ void BytecodeTest::check_bytecodes(const Bytecode *b,
          EXPECT_EQ(c.value, *p) << "bytecode mismatch at offset "
                                 << (p - b->bytes())
                                 << std::endl << std::endl << *b;
+         if (c.value != *p)
+            return;
          ++p;
       }
       else if (c.value == CheckBytecode::DONT_CARE)
@@ -98,17 +100,22 @@ void BytecodeTest::check_bytecodes(const Bytecode *b,
          const int num = c.value & 0xff;
          if (match.find(num) == match.end())
             match[num] = *p;
-         else
+         else {
             EXPECT_EQ(match[num], *p) << "placeholder _" << num
                                       << " mismatch at offset"
                                       << (p - b->bytes());
+            if (match[num] != *p)
+               return;
+         }
          ++p;
       }
-      else
+      else {
          FAIL() << "unexpected bytecode check" << c.value;
+         return;
+      }
    }
 
-   EXPECT_EQ(b->bytes() + b->length(), p) << "did not match all bytecodes"
+   EXPECT_EQ(b->length(), p - b->bytes()) << "did not match all bytecodes"
                                           << std::endl << std::endl << *b;
 }
 
@@ -127,7 +134,7 @@ TEST_F(BytecodeTest, compile_add1) {
 
    check_bytecodes(b, {
          Bytecode::MOV, _1, 0,
-         Bytecode::ADDW, _1, 0x01, 0x00, 0x00, 0x00,
+         Bytecode::ADDB, _1, 0x01,
          Bytecode::MOV, 0, _1,
          Bytecode::RET
       });
@@ -144,6 +151,32 @@ TEST_F(BytecodeTest, compile_fact) {
    ASSERT_NE(nullptr, b);
 
    b->dump();
+
+   check_bytecodes(b, {
+         Bytecode::MOVB, _, 1,
+         Bytecode::STR, _, _, _, _,
+         Bytecode::CMP, _, _,
+         Bytecode::CSET, _, Bytecode::Z,
+         Bytecode::CBNZ, _, _, _,
+         Bytecode::JMP, _, _,
+         Bytecode::STR, _, _, _, _,
+         Bytecode::JMP, _, _,
+         Bytecode::LDR, _, _, _, _,
+         Bytecode::MOV, _, _,
+         Bytecode::RET,
+         Bytecode::LDR, _, _, _, _,
+         Bytecode::LDR, _, _, _, _,
+         Bytecode::MOV, _, _,
+         Bytecode::MUL, _, _,
+         Bytecode::STR, _, _, _, _,
+         Bytecode::MOV, _, _,
+         Bytecode::ADDB, _, _,
+         Bytecode::STR, _, _, _, _,
+         Bytecode::CMP, _, _,
+         Bytecode::CSET, _, Bytecode::Z,
+         Bytecode::CBNZ, _, _, _,
+         Bytecode::JMP, _, _
+      });
 }
 
 extern "C" int run_gtests(int argc, char **argv)
