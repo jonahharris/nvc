@@ -150,7 +150,7 @@ TEST_F(BytecodeTest, compile_fact) {
    Bytecode *b = Bytecode::compile(InterpMachine::get(), unit);
    ASSERT_NE(nullptr, b);
 
-   b->dump();
+   EXPECT_EQ(8, b->frame_size());
 
    check_bytecodes(b, {
          Bytecode::MOVB, _, 1,

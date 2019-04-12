@@ -86,10 +86,12 @@ public:
    const uint8_t *bytes() const { return bytes_; }
    size_t length() const { return len_; }
    const Machine& machine() const { return machine_; }
+   unsigned frame_size() const { return frame_size_; }
 
    void dump(Printer&& printer = StdoutPrinter()) const;
    void dump(Printer& printer) const;
    void set_bytes(const uint8_t *bytes, size_t len);
+   void set_frame_size(unsigned s);
 
 private:
    explicit Bytecode(const Machine& m);
@@ -98,6 +100,7 @@ private:
 
    uint8_t       *bytes_ = nullptr;
    size_t         len_ = 0;
+   unsigned       frame_size_ = 0;
    const Machine  machine_;
 };
 

@@ -134,6 +134,8 @@ void Compiler::compile(vcode_unit_t unit)
       stack_offset += 4;
    }
 
+   bytecode_->set_frame_size(stack_offset);
+
    const int nregs = vcode_count_regs();
    for (int i = 0; i < nregs; i++) {
       Mapping m = { Mapping::REGISTER, i };
@@ -551,6 +553,11 @@ void Dumper::diassemble_one()
 
 void Dumper::dump()
 {
+   if (bytecode_->frame_size() > 0)
+      printer_.print("FRAME %d BYTES\n", bytecode_->frame_size());
+
+   printer_.print("CODE\n");
+
    while (bptr_ < bytecode_->bytes() + bytecode_->length()) {
       const uint8_t *startp = bptr_;
       col_ = 0;
@@ -612,6 +619,11 @@ void Bytecode::set_bytes(const uint8_t *bytes, size_t len)
    len_ = len;
 
    memcpy(bytes_, bytes, len);
+}
+
+void Bytecode::set_frame_size(unsigned s)
+{
+   frame_size_ = s;
 }
 
 Machine::Machine(const char *name, int num_regs, int result_reg, int sp_reg)
