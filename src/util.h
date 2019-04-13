@@ -64,6 +64,12 @@ BEGIN_C_HEADER
 #define STATIC_ASSERT(x)
 #endif
 
+#ifdef NDEBUG
+#define ASSERT(x, ...)
+#else
+#define ASSERT(x, ...) assert(x)
+#endif
+
 #ifdef __MINGW32__
 #define realpath(N, R) _fullpath((R), (N), _MAX_PATH)
 #define setenv(x, y, z) _putenv_s((x), (y))

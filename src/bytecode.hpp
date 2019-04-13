@@ -22,6 +22,7 @@
 #include "printer.hpp"
 
 #include <iosfwd>
+#include <vector>
 
 class Machine {
 public:
@@ -81,6 +82,51 @@ public:
       EQ = Z, NE = NZ
    };
 
+   struct Register {
+      int num;
+   };
+
+   static inline Register R(int num) {
+      return Register { num };
+   }
+
+   class Assembler {
+   public:
+      explicit Assembler(const Machine& m);
+
+      Bytecode *finish();
+      void set_frame_size(unsigned bytes);
+      unsigned code_size() const { return bytes_.size(); }
+      void patch_branch(unsigned offset, int abs);
+
+      void mov(Register dst, Register src);
+      void mov(Register dst, int64_t value);
+      void add(Register dst, Register src);
+      void add(Register dst, int64_t value);
+      void str(Register indirect, int16_t offset, Register src);
+      void ldr(Register dst, Register indirect, int16_t offset);
+      void ret();
+      void cmp(Register lhs, Register rhs);
+      void cset(Register dst, Condition cond);
+      void cbnz(Register src, unsigned offset);
+      void jmp(unsigned offset);
+      void mul(Register dst, Register rhs);
+      void nop();
+
+   private:
+      void emit_reg(Register reg);
+      void emit_u8(uint8_t byte);
+      void emit_i32(int32_t value);
+      void emit_i16(int16_t value);
+
+      Assembler(const Assembler &) = delete;
+      Assembler(Assembler &&) = default;
+
+      std::vector<uint8_t> bytes_;
+      const Machine        machine_;
+      unsigned             frame_size_ = 0;
+   };
+
    static Bytecode *compile(const Machine& m, vcode_unit_t unit);
 
    const uint8_t *bytes() const { return bytes_; }
@@ -90,18 +136,18 @@ public:
 
    void dump(Printer&& printer = StdoutPrinter()) const;
    void dump(Printer& printer) const;
-   void set_bytes(const uint8_t *bytes, size_t len);
-   void set_frame_size(unsigned s);
 
 private:
-   explicit Bytecode(const Machine& m);
+   explicit Bytecode(const Machine& m, const uint8_t *bytes, size_t len,
+                     unsigned frame_size);
    Bytecode(const Bytecode&) = delete;
+   Bytecode(const Bytecode&&) = delete;
    ~Bytecode();
 
-   uint8_t       *bytes_ = nullptr;
-   size_t         len_ = 0;
-   unsigned       frame_size_ = 0;
-   const Machine  machine_;
+   uint8_t *const  bytes_;
+   const size_t    len_;
+   const unsigned  frame_size_;
+   const Machine   machine_;
 };
 
 std::ostream& operator<<(std::ostream& os, const Bytecode& b);

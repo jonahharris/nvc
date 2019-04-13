@@ -23,14 +23,15 @@
 #include <string.h>
 #include <ostream>
 
+#define __ asm_.
+
 namespace {
    class Compiler {
    public:
-      Compiler(Bytecode *b);
+      explicit Compiler(const Machine& m);
       Compiler(const Compiler&) = delete;
-      ~Compiler();
 
-      void compile(vcode_unit_t unit);
+      Bytecode *compile(vcode_unit_t unit);
 
    private:
       void compile_const(int op);
@@ -43,17 +44,16 @@ namespace {
       void compile_cond(int op);
       void compile_mul(int op);
 
-      void emit_u8(uint8_t byte);
-      void emit_i32(int32_t value);
-      void emit_i16(int16_t value);
-      void emit_reg(int reg);
-      void emit_patch(vcode_block_t block);
+      int branch_delta(vcode_block_t block);
 
       struct Mapping {
          enum Kind { REGISTER, STACK };
 
          Kind kind;
-         int  slot;
+         union {
+            Bytecode::Register reg;
+            int slot;
+         };
       };
 
       struct Patch {
@@ -64,8 +64,8 @@ namespace {
       const Mapping& map_vcode_reg(vcode_reg_t reg) const;
       const Mapping& map_vcode_var(vcode_reg_t reg) const;
 
-      Bytecode *const                bytecode_;
-      std::vector<uint8_t>           bytes_;
+      const Machine                  machine_;
+      Bytecode::Assembler            asm_;
       std::map<vcode_var_t, Mapping> var_map_;
       std::vector<Mapping>           reg_map_;
       std::map<vcode_block_t, int>   block_map_;
@@ -97,15 +97,11 @@ namespace {
    };
 }
 
-Compiler::Compiler(Bytecode *b)
-   : bytecode_(b)
+Compiler::Compiler(const Machine& m)
+   : machine_(m),
+     asm_(m)
 {
 
-}
-
-Compiler::~Compiler()
-{
-   bytecode_->set_bytes(bytes_.data(), bytes_.size());
 }
 
 const Compiler::Mapping& Compiler::map_vcode_reg(vcode_reg_t reg) const
@@ -121,7 +117,7 @@ const Compiler::Mapping& Compiler::map_vcode_var(vcode_var_t var) const
    return it->second;
 }
 
-void Compiler::compile(vcode_unit_t unit)
+Bytecode *Compiler::compile(vcode_unit_t unit)
 {
    vcode_select_unit(unit);
 
@@ -134,7 +130,7 @@ void Compiler::compile(vcode_unit_t unit)
       stack_offset += 4;
    }
 
-   bytecode_->set_frame_size(stack_offset);
+   __ set_frame_size(stack_offset);
 
    const int nregs = vcode_count_regs();
    for (int i = 0; i < nregs; i++) {
@@ -146,7 +142,7 @@ void Compiler::compile(vcode_unit_t unit)
    for (int i = 0; i < nblocks; i++) {
       vcode_select_block(i);
 
-      block_map_[i] = bytes_.size();
+      block_map_[i] = __ code_size();
 
       const int nops = vcode_count_ops();
       for (int j = 0; j < nops; j++) {
@@ -191,10 +187,10 @@ void Compiler::compile(vcode_unit_t unit)
    }
 
    for (const Patch& p : patches_) {
-      const int delta = block_map_[p.block] - p.offset;
-      bytes_[p.offset] = delta & 0xff;
-      bytes_[p.offset + 1] = (delta >> 8) & 0xff;
+      __ patch_branch(p.offset, block_map_[p.block]);
    }
+
+   return __ finish();
 }
 
 void Compiler::compile_const(int op)
@@ -202,18 +198,7 @@ void Compiler::compile_const(int op)
    const Mapping& result = map_vcode_reg(vcode_get_result(op));
    assert(result.kind == Mapping::REGISTER);
 
-   int64_t value = vcode_get_value(op);
-
-   if (value >= INT8_MIN && value <= INT8_MAX) {
-      emit_u8(Bytecode::MOVB);
-      emit_reg(result.slot);
-      emit_u8(value);
-   }
-   else {
-      emit_u8(Bytecode::MOVW);
-      emit_reg(result.slot);
-      emit_i32(vcode_get_value(op));
-   }
+   __ mov(result.reg, vcode_get_value(op));
 }
 
 void Compiler::compile_addi(int op)
@@ -224,22 +209,8 @@ void Compiler::compile_addi(int op)
    assert(dst.kind == Mapping::REGISTER);
    assert(src.kind == Mapping::REGISTER);
 
-   emit_u8(Bytecode::MOV);
-   emit_reg(dst.slot);
-   emit_reg(src.slot);
-
-   int64_t value = vcode_get_value(op);
-
-   if (value >= INT8_MIN && value <= INT8_MAX) {
-      emit_u8(Bytecode::ADDB);
-      emit_reg(dst.slot);
-      emit_u8(value);
-   }
-   else {
-      emit_u8(Bytecode::ADDW);
-      emit_reg(dst.slot);
-      emit_i32(value);
-   }
+   __ mov(dst.reg, src.reg);
+   __ add(dst.reg, vcode_get_value(op));
 }
 
 void Compiler::compile_return(int op)
@@ -247,13 +218,11 @@ void Compiler::compile_return(int op)
    const Mapping& value = map_vcode_reg(vcode_get_arg(op, 0));
    assert(value.kind == Mapping::REGISTER);
 
-   if (value.slot != bytecode_->machine().result_reg()) {
-      emit_u8(Bytecode::MOV);
-      emit_reg(bytecode_->machine().result_reg());
-      emit_reg(value.slot);
+   if (value.slot != machine_.result_reg()) {
+      __ mov(Bytecode::R(machine_.result_reg()), value.reg);
    }
 
-   emit_u8(Bytecode::RET);
+   __ ret();
 }
 
 void Compiler::compile_store(int op)
@@ -264,10 +233,7 @@ void Compiler::compile_store(int op)
    const Mapping& src = map_vcode_reg(vcode_get_arg(op, 0));
    assert(src.kind == Mapping::REGISTER);
 
-   emit_u8(Bytecode::STR);
-   emit_reg(bytecode_->machine().sp_reg());
-   emit_i16(dst.slot);
-   emit_reg(src.slot);
+   __ str(Bytecode::R(machine_.sp_reg()), dst.slot, src.reg);
 }
 
 void Compiler::compile_load(int op)
@@ -278,10 +244,7 @@ void Compiler::compile_load(int op)
    const Mapping& dst = map_vcode_reg(vcode_get_result(op));
    assert(dst.kind == Mapping::REGISTER);
 
-   emit_u8(Bytecode::LDR);
-   emit_reg(dst.slot);
-   emit_reg(bytecode_->machine().sp_reg());
-   emit_i16(src.slot);
+   __ ldr(dst.reg, Bytecode::R(machine_.sp_reg()), src.slot);
 }
 
 void Compiler::compile_cmp(int op)
@@ -294,13 +257,20 @@ void Compiler::compile_cmp(int op)
    assert(lhs.kind == Mapping::REGISTER);
    assert(rhs.kind == Mapping::REGISTER);
 
-   emit_u8(Bytecode::CMP);
-   emit_reg(lhs.slot);
-   emit_reg(rhs.slot);
+   Bytecode::Condition cond = Bytecode::EQ;
+   switch (vcode_get_cmp(op)) {
+   case VCODE_CMP_EQ:  cond = Bytecode::EQ; break;
+   case VCODE_CMP_NEQ: cond = Bytecode::NE; break;
+   case VCODE_CMP_LT : cond = Bytecode::LT; break;
+   case VCODE_CMP_LEQ: cond = Bytecode::LE; break;
+   case VCODE_CMP_GT : cond = Bytecode::GT; break;
+   case VCODE_CMP_GEQ: cond = Bytecode::GE; break;
+   default:
+      ASSERT(false, "unhandled vcode comparison");
+   }
 
-   emit_u8(Bytecode::CSET);
-   emit_reg(dst.slot);
-   emit_u8(Bytecode::EQ /* XXX */);
+   __ cmp(lhs.reg, rhs.reg);
+   __ cset(dst.reg, cond);
 }
 
 void Compiler::compile_cond(int op)
@@ -308,18 +278,14 @@ void Compiler::compile_cond(int op)
    const Mapping& src = map_vcode_reg(vcode_get_arg(op, 0));
    assert(src.kind == Mapping::REGISTER);
 
-   emit_u8(Bytecode::CBNZ);
-   emit_reg(src.slot);
-   emit_patch(vcode_get_target(op, 0));
+   __ cbnz(src.reg, branch_delta(vcode_get_target(op, 0)));
 
-   emit_u8(Bytecode::JMP);
-   emit_patch(vcode_get_target(op, 1));
+   __ jmp(branch_delta(vcode_get_target(op, 1)));
 }
 
 void Compiler::compile_jump(int op)
 {
-   emit_u8(Bytecode::JMP);
-   emit_patch(vcode_get_target(op, 0));
+   __ jmp(branch_delta(vcode_get_target(op, 0)));
 }
 
 void Compiler::compile_mul(int op)
@@ -332,53 +298,19 @@ void Compiler::compile_mul(int op)
    assert(lhs.kind == Mapping::REGISTER);
    assert(rhs.kind == Mapping::REGISTER);
 
-   emit_u8(Bytecode::MOV);
-   emit_reg(dst.slot);
-   emit_reg(lhs.slot);
-
-   emit_u8(Bytecode::MUL);
-   emit_reg(dst.slot);
-   emit_reg(rhs.slot);
+   __ mov(dst.reg, lhs.reg);
+   __ mul(dst.reg, rhs.reg);
 }
 
-void Compiler::emit_reg(int reg)
+int Compiler::branch_delta(vcode_block_t block)
 {
-   assert(bytecode_->machine().num_regs() <= 256);
-   assert(reg < 256);
-   emit_u8(reg);
-}
-
-void Compiler::emit_patch(vcode_block_t block)
-{
-   const unsigned pos = bytes_.size();
-
    auto it = block_map_.find(block);
-   if (it != block_map_.end()) {
-      emit_i16(it->second - pos);
-   }
+   if (it != block_map_.end())
+      return it->second;
    else {
-      patches_.push_back(Patch { block, pos });
-      emit_i16(-1);
+      patches_.push_back(Patch { block, __ code_size() });
+      return -1;
    }
-}
-
-void Compiler::emit_u8(uint8_t byte)
-{
-   bytes_.push_back(byte);
-}
-
-void Compiler::emit_i32(int32_t value)
-{
-   bytes_.push_back(value & 0xff);
-   bytes_.push_back((value >> 8) & 0xff);
-   bytes_.push_back((value >> 16) & 0xff);
-   bytes_.push_back((value >> 24) & 0xff);
-}
-
-void Compiler::emit_i16(int16_t value)
-{
-   bytes_.push_back(value & 0xff);
-   bytes_.push_back((value >> 8) & 0xff);
 }
 
 Dumper::Dumper(Printer& printer, const Bytecode *b)
@@ -581,10 +513,15 @@ void Dumper::dump()
    assert(bptr_ == bytecode_->bytes() + bytecode_->length());
 }
 
-Bytecode::Bytecode(const Machine& m)
-   : machine_(m)
+Bytecode::Bytecode(const Machine& m, const uint8_t *bytes, size_t len,
+                   unsigned frame_size)
+   : bytes_(new uint8_t[len]),
+     len_(len),
+     frame_size_(frame_size),
+     machine_(m)
 {
 
+   memcpy(bytes_, bytes, len);
 }
 
 Bytecode::~Bytecode()
@@ -594,11 +531,7 @@ Bytecode::~Bytecode()
 
 Bytecode *Bytecode::compile(const Machine& m, vcode_unit_t unit)
 {
-   Bytecode *b = new Bytecode(m);
-
-   Compiler(b).compile(unit);
-
-   return b;
+   return Compiler(m).compile(unit);
 }
 
 void Bytecode::dump(Printer&& printer) const
@@ -611,19 +544,157 @@ void Bytecode::dump(Printer& printer) const
    Dumper(printer, this).dump();
 }
 
-void Bytecode::set_bytes(const uint8_t *bytes, size_t len)
+Bytecode::Assembler::Assembler(const Machine& m)
+   : machine_(m)
 {
-   assert(bytes_ == nullptr);
 
-   bytes_ = new uint8_t[len];
-   len_ = len;
-
-   memcpy(bytes_, bytes, len);
 }
 
-void Bytecode::set_frame_size(unsigned s)
+void Bytecode::Assembler::mov(Register dst, Register src)
 {
-   frame_size_ = s;
+   emit_u8(Bytecode::MOV);
+   emit_reg(dst);
+   emit_reg(src);
+}
+
+void Bytecode::Assembler::cmp(Register lhs, Register rhs)
+{
+   emit_u8(Bytecode::CMP);
+   emit_reg(lhs);
+   emit_reg(rhs);
+}
+
+void Bytecode::Assembler::cset(Register dst, Condition cond)
+{
+   emit_u8(Bytecode::CSET);
+   emit_reg(dst);
+   emit_u8(cond);
+}
+
+void Bytecode::Assembler::cbnz(Register src, unsigned offset)
+{
+   emit_u8(Bytecode::CBNZ);
+   emit_reg(src);
+   emit_i16(offset - bytes_.size());
+}
+
+void Bytecode::Assembler::jmp(unsigned offset)
+{
+   emit_u8(Bytecode::JMP);
+   emit_i16(offset - bytes_.size());
+}
+
+void Bytecode::Assembler::str(Register indirect, int16_t offset, Register src)
+{
+   emit_u8(Bytecode::STR);
+   emit_reg(indirect);
+   emit_i16(offset);
+   emit_reg(src);
+}
+
+void Bytecode::Assembler::ldr(Register dst, Register indirect, int16_t offset)
+{
+   emit_u8(Bytecode::LDR);
+   emit_reg(dst);
+   emit_reg(indirect);
+   emit_i16(offset);
+}
+
+void Bytecode::Assembler::ret()
+{
+   emit_u8(Bytecode::RET);
+}
+
+void Bytecode::Assembler::nop()
+{
+   emit_u8(Bytecode::NOP);
+}
+
+void Bytecode::Assembler::mov(Register dst, int64_t value)
+{
+   if (value >= INT8_MIN && value <= INT8_MAX) {
+      emit_u8(Bytecode::MOVB);
+      emit_reg(dst);
+      emit_u8(value);
+   }
+   else {
+      emit_u8(Bytecode::MOVW);
+      emit_reg(dst);
+      emit_i32(value);
+   }
+}
+
+void Bytecode::Assembler::add(Register dst, int64_t value)
+{
+   if (value >= INT8_MIN && value <= INT8_MAX) {
+      emit_u8(Bytecode::ADDB);
+      emit_reg(dst);
+      emit_u8(value);
+   } else {
+     emit_u8(Bytecode::ADDW);
+     emit_reg(dst);
+     emit_i32(value);
+   }
+}
+
+void Bytecode::Assembler::mul(Register dst, Register rhs)
+{
+   emit_u8(Bytecode::MUL);
+   emit_reg(dst);
+   emit_reg(rhs);
+}
+
+void Bytecode::Assembler::emit_reg(Register reg)
+{
+   assert(machine_.num_regs() <= 256);
+   assert(reg.num < 256);
+   emit_u8(reg.num);
+}
+
+void Bytecode::Assembler::emit_u8(uint8_t byte)
+{
+   bytes_.push_back(byte);
+}
+
+void Bytecode::Assembler::emit_i32(int32_t value)
+{
+   bytes_.push_back(value & 0xff);
+   bytes_.push_back((value >> 8) & 0xff);
+   bytes_.push_back((value >> 16) & 0xff);
+   bytes_.push_back((value >> 24) & 0xff);
+}
+
+void Bytecode::Assembler::emit_i16(int16_t value)
+{
+   bytes_.push_back(value & 0xff);
+   bytes_.push_back((value >> 8) & 0xff);
+}
+
+void Bytecode::Assembler::patch_branch(unsigned int offset, int abs)
+{
+   switch (bytes_[offset]) {
+   case Bytecode::JMP:  offset += 1; break;
+   case Bytecode::CBNZ: offset += 2; break;
+   default:
+      ASSERT(false, "invalid bytecode %02x in patch_branch", bytes_[offset]);
+   }
+
+   ASSERT(offset + 2 < bytes_.size(), "patch beyond end of code");
+
+   const int delta = abs - offset;
+
+   bytes_[offset] = delta & 0xff;
+   bytes_[offset + 1] = (delta >> 8) & 0xff;
+}
+
+void Bytecode::Assembler::set_frame_size(unsigned size)
+{
+   frame_size_ = size;
+}
+
+Bytecode *Bytecode::Assembler::finish()
+{
+   return new Bytecode(machine_, bytes_.data(), bytes_.size(), frame_size_);
 }
 
 Machine::Machine(const char *name, int num_regs, int result_reg, int sp_reg)

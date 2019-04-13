@@ -5,10 +5,16 @@
 #include <gtest/gtest.h>
 #include <map>
 
+#define __ asm_.
+
 using namespace testing;
 
 class BytecodeTest : public ::testing::Test {
 protected:
+   BytecodeTest()
+      : asm_(InterpMachine::get())
+   {}
+
    using OpCode = Bytecode::OpCode;
 
    virtual void SetUp() {}
@@ -31,6 +37,8 @@ protected:
 
    void check_bytecodes(const Bytecode *b,
                         const std::vector<CheckBytecode>&& expect);
+
+   Bytecode::Assembler asm_;
 
 private:
    static lib_t work_;
@@ -143,6 +151,25 @@ TEST_F(BytecodeTest, compile_add1) {
    vcode_unit_unref(context);
 }
 
+TEST_F(BytecodeTest, patch) {
+   __ jmp(0);
+   __ jmp(0);
+   __ cbnz(Bytecode::R(0), 0);
+   __ cbnz(Bytecode::R(0), 0);
+
+   __ patch_branch(3, 0);
+   __ patch_branch(6, 10);
+
+   Bytecode *b = __ finish();
+
+   check_bytecodes(b, {
+         Bytecode::JMP, 0xff, 0xff,
+         Bytecode::JMP, 0xfc, 0xff,
+         Bytecode::CBNZ, 0, 0x02, 0x00,
+         Bytecode::CBNZ, 0, 0xf4, 0xff,
+      });
+}
+
 TEST_F(BytecodeTest, compile_fact) {
    vcode_unit_t unit = vcode_find_unit(ident_new("GTEST.FUNCTIONS.FACT(I)I"));
    ASSERT_NE(nullptr, unit);
@@ -156,7 +183,7 @@ TEST_F(BytecodeTest, compile_fact) {
          Bytecode::MOVB, _, 1,
          Bytecode::STR, _, _, _, _,
          Bytecode::CMP, _, _,
-         Bytecode::CSET, _, Bytecode::Z,
+         Bytecode::CSET, _, Bytecode::GT,
          Bytecode::CBNZ, _, _, _,
          Bytecode::JMP, _, _,
          Bytecode::STR, _, _, _, _,
