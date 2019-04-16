@@ -42,7 +42,9 @@ lib_libnvc_a_SOURCES = \
 	src/bytecode.cpp \
 	src/bytecode.hpp \
 	src/printer.cpp \
-	src/printer.hpp
+	src/printer.hpp \
+	src/interp.hpp \
+	src/interp.cpp
 
 lib_libcgen_a_SOURCES = src/cgen.c
 lib_libcgen_a_CFLAGS = $(AM_CFLAGS) $(LLVM_CFLAGS)

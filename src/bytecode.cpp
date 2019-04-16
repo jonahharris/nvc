@@ -266,7 +266,7 @@ void Compiler::compile_cmp(int op)
    case VCODE_CMP_GT : cond = Bytecode::GT; break;
    case VCODE_CMP_GEQ: cond = Bytecode::GE; break;
    default:
-      ASSERT(false, "unhandled vcode comparison");
+      should_not_reach_here("unhandled vcode comparison");
    }
 
    __ cmp(lhs.reg, rhs.reg);
@@ -675,11 +675,9 @@ void Bytecode::Assembler::patch_branch(unsigned int offset, int abs)
    switch (bytes_[offset]) {
    case Bytecode::JMP:  offset += 1; break;
    case Bytecode::CBNZ: offset += 2; break;
-   default:
-      ASSERT(false, "invalid bytecode %02x in patch_branch", bytes_[offset]);
    }
 
-   ASSERT(offset + 2 < bytes_.size(), "patch beyond end of code");
+   assert(offset + 2 < bytes_.size());
 
    const int delta = abs - offset;
 
@@ -729,7 +727,7 @@ int16_t Machine::read_i16(const uint8_t *p) const
 }
 
 InterpMachine::InterpMachine()
-   : Machine("interp", 256, 0, 255)
+   : Machine("interp", NUM_REGS, 0, 255)
 {
 }
 

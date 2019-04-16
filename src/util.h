@@ -65,9 +65,11 @@ BEGIN_C_HEADER
 #endif
 
 #ifdef NDEBUG
-#define ASSERT(x, ...)
+#define should_not_reach_here(...) __builtin_unreachable()
+#define DEBUG_ONLY(x)
 #else
-#define ASSERT(x, ...) assert(x)
+#define should_not_reach_here(...) fatal_trace(__VA_ARGS__)
+#define DEBUG_ONLY(x) x
 #endif
 
 #ifdef __MINGW32__

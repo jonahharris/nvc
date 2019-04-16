@@ -52,6 +52,8 @@ class InterpMachine : public Machine {
 public:
    static const InterpMachine& get();
 
+   static const int NUM_REGS = 256;
+
 private:
    InterpMachine();
 };
@@ -113,18 +115,20 @@ public:
       void mul(Register dst, Register rhs);
       void nop();
 
-   private:
-      void emit_reg(Register reg);
-      void emit_u8(uint8_t byte);
-      void emit_i32(int32_t value);
-      void emit_i16(int16_t value);
+      Register sp() const { return Register{ machine_.sp_reg() }; };
 
-      Assembler(const Assembler &) = delete;
-      Assembler(Assembler &&) = default;
+      private:
+        void emit_reg(Register reg);
+        void emit_u8(uint8_t byte);
+        void emit_i32(int32_t value);
+        void emit_i16(int16_t value);
 
-      std::vector<uint8_t> bytes_;
-      const Machine        machine_;
-      unsigned             frame_size_ = 0;
+        Assembler(const Assembler &) = delete;
+        Assembler(Assembler &&) = default;
+
+        std::vector<uint8_t> bytes_;
+        const Machine machine_;
+        unsigned frame_size_ = 0;
    };
 
    static Bytecode *compile(const Machine& m, vcode_unit_t unit);
