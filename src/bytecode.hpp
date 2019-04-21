@@ -92,6 +92,25 @@ public:
       return Register { num };
    }
 
+   class Assembler;
+
+   class Label {
+   public:
+      Label() = default;
+      Label(const Label&) = delete;
+      Label(Label&&) = default;
+      ~Label();
+
+      void bind(Assembler *owner, unsigned target);
+      void add_patch(unsigned offset);
+      bool bound() const { return bound_ != -1; }
+      unsigned target() const;
+
+   private:
+      int bound_ = -1;
+      std::vector<unsigned> patch_list_;
+   };
+
    class Assembler {
    public:
       explicit Assembler(const Machine& m);
@@ -99,7 +118,8 @@ public:
       Bytecode *finish();
       void set_frame_size(unsigned bytes);
       unsigned code_size() const { return bytes_.size(); }
-      void patch_branch(unsigned offset, int abs);
+      void patch_branch(unsigned offset, unsigned abs);
+      void bind(Label& label);
 
       void mov(Register dst, Register src);
       void mov(Register dst, int64_t value);
@@ -110,8 +130,8 @@ public:
       void ret();
       void cmp(Register lhs, Register rhs);
       void cset(Register dst, Condition cond);
-      void cbnz(Register src, unsigned offset);
-      void jmp(unsigned offset);
+      void cbnz(Register src, Label& label);
+      void jmp(Label& label);
       void mul(Register dst, Register rhs);
       void nop();
 
@@ -122,6 +142,7 @@ public:
         void emit_u8(uint8_t byte);
         void emit_i32(int32_t value);
         void emit_i16(int16_t value);
+        void emit_branch(unsigned offset, Label& target);
 
         Assembler(const Assembler &) = delete;
         Assembler(Assembler &&) = default;

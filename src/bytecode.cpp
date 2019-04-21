@@ -44,7 +44,7 @@ namespace {
       void compile_cond(int op);
       void compile_mul(int op);
 
-      int branch_delta(vcode_block_t block);
+      Bytecode::Label& label_for_block(vcode_block_t block);
 
       struct Mapping {
          enum Kind { REGISTER, STACK };
@@ -57,8 +57,8 @@ namespace {
       };
 
       struct Patch {
-         vcode_block_t block;
-         unsigned      offset;
+         vcode_block_t   block;
+         Bytecode::Label label;
       };
 
       const Mapping& map_vcode_reg(vcode_reg_t reg) const;
@@ -68,8 +68,7 @@ namespace {
       Bytecode::Assembler            asm_;
       std::map<vcode_var_t, Mapping> var_map_;
       std::vector<Mapping>           reg_map_;
-      std::map<vcode_block_t, int>   block_map_;
-      std::vector<Patch>             patches_;
+      std::vector<Bytecode::Label>   block_map_;
    };
 
    class Dumper {
@@ -139,10 +138,14 @@ Bytecode *Compiler::compile(vcode_unit_t unit)
    }
 
    const int nblocks = vcode_count_blocks();
+
+   for (int i = 0; i < nblocks; i++)
+      block_map_.push_back(Bytecode::Label());
+
    for (int i = 0; i < nblocks; i++) {
       vcode_select_block(i);
 
-      block_map_[i] = __ code_size();
+      __ bind(block_map_[i]);
 
       const int nops = vcode_count_ops();
       for (int j = 0; j < nops; j++) {
@@ -186,9 +189,7 @@ Bytecode *Compiler::compile(vcode_unit_t unit)
       }
    }
 
-   for (const Patch& p : patches_) {
-      __ patch_branch(p.offset, block_map_[p.block]);
-   }
+   block_map_.clear();  // Check all labels are bound
 
    return __ finish();
 }
@@ -278,14 +279,14 @@ void Compiler::compile_cond(int op)
    const Mapping& src = map_vcode_reg(vcode_get_arg(op, 0));
    assert(src.kind == Mapping::REGISTER);
 
-   __ cbnz(src.reg, branch_delta(vcode_get_target(op, 0)));
+   __ cbnz(src.reg, label_for_block(vcode_get_target(op, 0)));
 
-   __ jmp(branch_delta(vcode_get_target(op, 1)));
+   __ jmp(label_for_block(vcode_get_target(op, 1)));
 }
 
 void Compiler::compile_jump(int op)
 {
-   __ jmp(branch_delta(vcode_get_target(op, 0)));
+   __ jmp(label_for_block(vcode_get_target(op, 0)));
 }
 
 void Compiler::compile_mul(int op)
@@ -302,15 +303,10 @@ void Compiler::compile_mul(int op)
    __ mul(dst.reg, rhs.reg);
 }
 
-int Compiler::branch_delta(vcode_block_t block)
+Bytecode::Label& Compiler::label_for_block(vcode_block_t block)
 {
-   auto it = block_map_.find(block);
-   if (it != block_map_.end())
-      return it->second;
-   else {
-      patches_.push_back(Patch { block, __ code_size() });
-      return -1;
-   }
+   assert(block < block_map_.size());
+   return block_map_[block];
 }
 
 Dumper::Dumper(Printer& printer, const Bytecode *b)
@@ -571,17 +567,19 @@ void Bytecode::Assembler::cset(Register dst, Condition cond)
    emit_u8(cond);
 }
 
-void Bytecode::Assembler::cbnz(Register src, unsigned offset)
+void Bytecode::Assembler::cbnz(Register src, Label& target)
 {
+   const unsigned start = bytes_.size();
    emit_u8(Bytecode::CBNZ);
    emit_reg(src);
-   emit_i16(offset - bytes_.size());
+   emit_branch(start, target);
 }
 
-void Bytecode::Assembler::jmp(unsigned offset)
+void Bytecode::Assembler::jmp(Label& target)
 {
+   const unsigned start = bytes_.size();
    emit_u8(Bytecode::JMP);
-   emit_i16(offset - bytes_.size());
+   emit_branch(start, target);
 }
 
 void Bytecode::Assembler::str(Register indirect, int16_t offset, Register src)
@@ -670,19 +668,34 @@ void Bytecode::Assembler::emit_i16(int16_t value)
    bytes_.push_back((value >> 8) & 0xff);
 }
 
-void Bytecode::Assembler::patch_branch(unsigned int offset, int abs)
+void Bytecode::Assembler::bind(Label &label)
+{
+   label.bind(this, bytes_.size());
+}
+
+void Bytecode::Assembler::patch_branch(unsigned offset, unsigned abs)
 {
    switch (bytes_[offset]) {
    case Bytecode::JMP:  offset += 1; break;
    case Bytecode::CBNZ: offset += 2; break;
    }
 
-   assert(offset + 2 < bytes_.size());
+   assert(offset + 2 <= bytes_.size());
 
    const int delta = abs - offset;
 
    bytes_[offset] = delta & 0xff;
    bytes_[offset + 1] = (delta >> 8) & 0xff;
+}
+
+void Bytecode::Assembler::emit_branch(unsigned offset, Label& target)
+{
+   if (target.bound())
+      emit_i16(target.target() - bytes_.size());
+   else {
+      target.add_patch(offset);
+      emit_i16(-1);
+   }
 }
 
 void Bytecode::Assembler::set_frame_size(unsigned size)
@@ -693,6 +706,34 @@ void Bytecode::Assembler::set_frame_size(unsigned size)
 Bytecode *Bytecode::Assembler::finish()
 {
    return new Bytecode(machine_, bytes_.data(), bytes_.size(), frame_size_);
+}
+
+Bytecode::Label::~Label()
+{
+   assert(patch_list_.size() == 0);
+}
+
+void Bytecode::Label::add_patch(unsigned offset)
+{
+   patch_list_.push_back(offset);
+}
+
+unsigned Bytecode::Label::target() const
+{
+   assert(bound_ >= 0);
+   return bound_;
+}
+
+void Bytecode::Label::bind(Assembler *owner, unsigned target)
+{
+   assert(bound_ == -1);
+
+   for (unsigned patch : patch_list_) {
+      owner->patch_branch(patch, target);
+   }
+
+   bound_ = target;
+   patch_list_.clear();
 }
 
 Machine::Machine(const char *name, int num_regs, int result_reg, int sp_reg)

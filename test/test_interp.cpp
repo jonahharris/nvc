@@ -46,17 +46,26 @@ TEST_F(InterpTest, fact) {
    Bytecode::Register r11 = Bytecode::R(11);
    Bytecode::Register r13 = Bytecode::R(13);
 
+   Bytecode::Label L1, L2, L3;
+
+   // L1 -> 21
+   // L2 -> 38
+   // L3 -> 29
+
    __ mov(r1, 1);
    __ str(__ sp(), 0, r1);
    __ cmp(r1, r0);
    __ cset(r3, Bytecode::GT);
-   __ cbnz(r3, 29);
-   __ jmp(21);
+   __ cbnz(r3, L2);
+   __ jmp(L1);
+   __ bind(L1);
    __ str(__ sp(), 4, r1);
-   __ jmp(38);
+   __ jmp(L2);
+   __ bind(L3);
    __ ldr(r13, __ sp(), 0);
    __ mov(r0, r13);
    __ ret();
+   __ bind(L2);
    __ ldr(r8, __ sp(), 0);
    __ ldr(r9, __ sp(), 4);
    __ mov(r10, r8);
@@ -67,8 +76,8 @@ TEST_F(InterpTest, fact) {
    __ str(__ sp(), 4, r11);
    __ cmp(r9, r0);
    __ cset(r3, Bytecode::EQ);
-   __ cbnz(r3, 29);
-   __ jmp(38);
+   __ cbnz(r3, L3);
+   __ jmp(L2);
 
    Bytecode *b = __ finish();
 

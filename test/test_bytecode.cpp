@@ -152,10 +152,13 @@ TEST_F(BytecodeTest, compile_add1) {
 }
 
 TEST_F(BytecodeTest, patch) {
-   __ jmp(0);
-   __ jmp(0);
-   __ cbnz(Bytecode::R(0), 0);
-   __ cbnz(Bytecode::R(0), 0);
+   Bytecode::Label L1;
+
+   __ bind(L1);
+   __ jmp(L1);
+   __ jmp(L1);
+   __ cbnz(Bytecode::R(0), L1);
+   __ cbnz(Bytecode::R(0), L1);
 
    __ patch_branch(3, 0);
    __ patch_branch(6, 10);
