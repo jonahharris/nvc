@@ -1,4 +1,5 @@
 #include "perf_util.hpp"
+#include "util.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -14,7 +15,15 @@ int main(int argc, char **argv)
 
    srandom(1234);
 
-   printf("\n%-20s%-12s%-10s%-10s\n", "Test", "Time", "Units", "Error");
+   term_init();
+
+#ifndef NDEBUG
+   color_printf("\n$red$$bold$PERFORMANCE TESTS SHOULD NOT BE RUN "
+                "ON DEBUG BUILDS$$\n");
+#endif
+
+   color_printf("\n$white$$bold$%-20s%-12s%-10s%-10s$$\n",
+                "Test", "Time", "Units", "Error");
 
    for (PerfTest *test : PerfTest::all_tests()) {
       printf("%-20s", test->name().c_str());

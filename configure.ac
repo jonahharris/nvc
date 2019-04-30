@@ -241,10 +241,22 @@ AC_ARG_ENABLE([werror],
   [AS_HELP_STRING([--enable-werror], [Treat warnings as errors])],
   [enable_werror=$enableval]
   [])
+
 if test x$enable_werror = xyes ; then
-  WERROR_CFLAGS="-Werror"
+  AX_CHECK_COMPILE_FLAG([-Werror], [CFLAGS="$CFLAGS -Werror"], [], [-Werror])
 fi
-AC_SUBST(WERROR_CFLAGS)
+
+AX_CHECK_COMPILE_FLAG([-Wall], [CFLAGS="$CFLAGS -Wall"], [], [-Werror])
+
+AC_LANG_PUSH([C++])
+
+AX_CHECK_COMPILE_FLAG([-Wall], [CXXFLAGS="$CXXFLAGS -Wall"], [], [-Werror])
+
+if test x$enable_werror = xyes ; then
+  AX_CHECK_COMPILE_FLAG([-Werror], [CXXFLAGS="$CXXFLAGS -Werror"], [], [-Werror])
+fi
+
+AC_LANG_POP([C++])
 
 case $host_os in
   msys*|mingw32*)
@@ -274,12 +286,11 @@ AC_ARG_ENABLE([gcov],
   [enable_gcov=$enableval],
   [])
 if test x$enable_gcov = xyes ; then
-  COV_CFLAGS="--coverage --no-inline -Og"
-  COV_LDFLAGS="--coverage"
+  CFLAGS="$CFLAGS --coverage --no-inline -Og"
+  CXXFLAGS="$CXXFLAGS --coverage --no-inline -Og"
+  LDFLAGS="$LDFLAGS --coverage"
   AC_MSG_WARN([code coverage with gcov is for use in development only])
 fi
-AC_SUBST(COV_CFLAGS)
-AC_SUBST(COV_LDFLAGS)
 AM_CONDITIONAL([ENABLE_GCOV], [test x$enable_gcov = xyes])
 
 AC_CHECK_PROG([RONN], [ronn], [1])
