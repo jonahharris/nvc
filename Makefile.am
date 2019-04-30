@@ -8,6 +8,7 @@ man_MANS = nvc.1
 
 AM_CPPFLAGS = -I$(top_srcdir)/thirdparty -I$(top_srcdir)/src
 AM_CFLAGS   = -Wall $(WERROR_CFLAGS) $(COV_CFLAGS) $(CHECK_CFLAGS)
+AM_CXXFLAGS = -Wall $(WERROR_CFLAGS) $(COV_CFLAGS)
 AM_LDFLAGS  = $(RDYNAMIC_FLAG) $(LLVM_LDFLAGS) $(COV_LDFLAGS)
 
 if FST_WRITER_PARALLEL

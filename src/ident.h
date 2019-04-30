@@ -108,6 +108,8 @@ void ident_list_free(ident_list_t *list);
 void _ident_list_cleanup(ident_list_t **list);
 bool ident_list_find(const ident_list_t *list, ident_t i);
 
+void ident_wipe(void);
+
 END_C_HEADER
 
 #endif // _IDENT_H

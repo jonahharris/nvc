@@ -28,6 +28,17 @@ bin_unit_test_LDADD = lib/libnvc.a lib/librt.a lib/libfastlz.a \
 
 bin_run_regr_SOURCES = test/run_regr.c
 
+EXTRA_PROGRAMS = bin/perf
+
+bin_perf_SOURCES = \
+	test/perf_driver.cpp \
+	test/perf_util.hpp \
+	test/perf_util.cpp \
+	test/perf_ident.cpp
+
+bin_perf_LDADD = lib/libnvc.a lib/librt.a lib/libfastlz.a \
+	$(POW_LIB) $(libdw_LIBS)
+
 TESTS_ENVIRONMENT = \
 	BUILD_DIR=$(top_builddir) \
 	LIB_DIR=$(abs_top_builddir)/lib \

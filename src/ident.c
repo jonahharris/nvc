@@ -166,6 +166,18 @@ static bool search_trie(const char **str, trie_t *t, trie_t **end)
    }
 }
 
+void ident_wipe(void)
+{
+   // Only call this is test code to reset to a consistent state
+   // All existing ident_t pointers are invalid after this call
+
+   // XXX: leak memory for now
+   for (int i = 0; i < 256; i++) {
+      free(root.map[i]);
+      root.map[i] = NULL;
+   }
+}
+
 ident_t ident_new(const char *str)
 {
    assert(str != NULL);
