@@ -37,51 +37,36 @@ TEST_F(InterpTest, add1) {
 }
 
 TEST_F(InterpTest, fact) {
-   Bytecode::Register r0 = Bytecode::R(0);
-   Bytecode::Register r1 = Bytecode::R(1);
-   Bytecode::Register r3 = Bytecode::R(3);
-   Bytecode::Register r8 = Bytecode::R(8);
-   Bytecode::Register r9 = Bytecode::R(9);
-   Bytecode::Register r10 = Bytecode::R(10);
-   Bytecode::Register r11 = Bytecode::R(11);
-   Bytecode::Register r13 = Bytecode::R(13);
+   Bytecode::Register Rn = Bytecode::R(0);
+   Bytecode::Register Rtmp1 = Bytecode::R(1);
+   Bytecode::Register Rtmp2 = Bytecode::R(8);
+   Bytecode::Register Rtmp3 = Bytecode::R(9);
 
    Bytecode::Label L1, L2, L3;
 
-   // L1 -> 21
-   // L2 -> 38
-   // L3 -> 29
-
-   __ mov(r1, 1);
-   __ str(__ sp(), 0, r1);
-   __ cmp(r1, r0);
-   __ cset(r3, Bytecode::GT);
-   __ cbnz(r3, L2);
+   __ mov(Rtmp1, 1);
+   __ str(__ sp(), 0, Rtmp1);
+   __ cmp(Rtmp1, Rn);
+   __ jmp(L2, Bytecode::GT);
    __ jmp(L1);
    __ bind(L1);
-   __ str(__ sp(), 4, r1);
+   __ str(__ sp(), 4, Rtmp1);
    __ jmp(L2);
    __ bind(L3);
-   __ ldr(r13, __ sp(), 0);
-   __ mov(r0, r13);
+   __ ldr(Rn, __ sp(), 0);
    __ ret();
    __ bind(L2);
-   __ ldr(r8, __ sp(), 0);
-   __ ldr(r9, __ sp(), 4);
-   __ mov(r10, r8);
-   __ mul(r10, r9);
-   __ str(__ sp(), 0, r10);
-   __ mov(r11, r9);
-   __ add(r11, 1);
-   __ str(__ sp(), 4, r11);
-   __ cmp(r9, r0);
-   __ cset(r3, Bytecode::EQ);
-   __ cbnz(r3, L3);
+   __ ldr(Rtmp2, __ sp(), 0);
+   __ ldr(Rtmp3, __ sp(), 4);
+   __ mul(Rtmp2, Rtmp3);
+   __ str(__ sp(), 0, Rtmp2);
+   __ cmp(Rtmp3, Rn);
+   __ add(Rtmp3, 1);
+   __ str(__ sp(), 4, Rtmp3);
+   __ jmp(L3, Bytecode::EQ);
    __ jmp(L2);
 
    Bytecode *b = __ finish();
-
-   b->dump();
 
    interp_.set_reg(0, 1);
    EXPECT_EQ(1, interp_.run(b));

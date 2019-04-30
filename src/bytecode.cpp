@@ -474,6 +474,11 @@ void Dumper::diassemble_one()
       reg();
       jump_target();
       break;
+   case Bytecode::JMPC:
+      opcode("JMPC");
+      condition();
+      jump_target();
+      break;
    default:
       fatal("invalid bytecode %02x", *bptr_);
    }
@@ -582,6 +587,14 @@ void Bytecode::Assembler::jmp(Label& target)
    emit_branch(start, target);
 }
 
+void Bytecode::Assembler::jmp(Label& target, Condition cond)
+{
+   const unsigned start = bytes_.size();
+   emit_u8(Bytecode::JMPC);
+   emit_u8(cond);
+   emit_branch(start, target);
+}
+
 void Bytecode::Assembler::str(Register indirect, int16_t offset, Register src)
 {
    emit_u8(Bytecode::STR);
@@ -677,6 +690,7 @@ void Bytecode::Assembler::patch_branch(unsigned offset, unsigned abs)
 {
    switch (bytes_[offset]) {
    case Bytecode::JMP:  offset += 1; break;
+   case Bytecode::JMPC: offset += 2; break;
    case Bytecode::CBNZ: offset += 2; break;
    }
 

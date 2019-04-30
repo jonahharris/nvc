@@ -77,6 +77,7 @@ public:
       CBNZ = 0x0d,     // Compare and branch if non-zero
       MOVB = 0x0e,     // Move 8-bit literal to register
       ADDB = 0x0f,     // Add 8-bit immediate to register
+      JMPC = 0x10,     // Jump if condition code set
    };
 
    enum Condition : uint8_t {
@@ -132,6 +133,7 @@ public:
       void cset(Register dst, Condition cond);
       void cbnz(Register src, Label& label);
       void jmp(Label& label);
+      void jmp(Label& target, Condition cond);
       void mul(Register dst, Register rhs);
       void nop();
 

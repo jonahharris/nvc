@@ -128,6 +128,13 @@ Interpreter::reg_t Interpreter::run(const Bytecode *code)
          bci_ += a - 2;
          break;
 
+      case Bytecode::JMPC:
+         a = imm8();
+         b = imm16();
+         if (flags_ & a)
+            bci_ += b - 2;
+         break;
+
       case Bytecode::MUL:
          a = reg();
          b = reg();
