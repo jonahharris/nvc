@@ -70,7 +70,7 @@ static void tree_assert_kind(tree_t t, const tree_kind_t *list, size_t len,
   const char *what);
 static void tree_assert_stmt(tree_t t);
 static attr_t *tree_find_attr(tree_t t, ident_t name, attr_kind_t kind);
-static _Bool tree_kind_in(tree_t t, const tree_kind_t *list, size_t len);
+static bool tree_kind_in(tree_t t, const tree_kind_t *list, size_t len);
 
 /* ========================================================================= */
 /* -- PRIVATE DATA --------------------------------------------------------- */

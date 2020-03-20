@@ -327,22 +327,6 @@ static bool type_set_uniq(type_t *pt);
 /* -- PRIVATE DATA --------------------------------------------------------- */
 /* ========================================================================= */
 
-static bool sem_check_constrained(tree_t t, type_t type);
-static bool sem_check_array_ref(tree_t t);
-static bool sem_declare(tree_t decl, bool add_predefined);
-static bool sem_locally_static(tree_t t);
-static bool sem_globally_static(tree_t t);
-static tree_t sem_check_lvalue(tree_t t);
-static bool sem_check_type(tree_t t, type_t *ptype);
-static bool sem_static_name(tree_t t, static_fn_t check_fn);
-static bool sem_check_range(range_t *r, type_t context);
-static bool sem_check_attr_ref(tree_t t, bool allow_range);
-static type_t sem_implicit_dereference(tree_t t, get_fn_t get, set_fn_t set);
-static void scope_insert_alias(tree_t t, ident_t name);
-static bool scope_import_unit(ident_t unit_name, lib_t lib,
-  bool all, bool pqual, const loc_t *loc);
-static int sem_ambiguous_rate(tree_t t);
-
 static scope_t *top_scope = NULL;
 static int errors = 0;
 static type_set_t *top_type_set = NULL;

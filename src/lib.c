@@ -107,19 +107,19 @@ struct search_path {
 /* -- STATIC FUNCTION PROTOTYPES ------------------------------------------- */
 /* ========================================================================= */
 
+static void lib_default_search_paths(void);
 static const char *lib_file_path(lib_t lib, const char *name);
-static const char *standard_suffix(vhdl_standard_t std);
-static ident_t upcase_name(const char *name);
-static lib_index_t *lib_find_in_index(lib_t lib, ident_t name);
-static lib_mtime_t lib_stat_mtime(struct stat *st);
-static lib_mtime_t lib_time_to_usecs(time_t t);
 static lib_t lib_find_at(const char *name, const char *path, bool exact);
-static lib_t lib_init(const char *name, const char *rpath, int lock_fd);
+static lib_index_t *lib_find_in_index(lib_t lib, ident_t name);
 static lib_unit_t *lib_get_aux(lib_t lib, ident_t ident);
+static lib_t lib_init(const char *name, const char *rpath, int lock_fd);
 static lib_unit_t *lib_put_aux(lib_t lib, tree_t unit, tree_rd_ctx_t ctx,
   bool dirty, lib_mtime_t mtime);
-static void lib_default_search_paths(void);
+static lib_mtime_t lib_stat_mtime(struct stat *st);
+static lib_mtime_t lib_time_to_usecs(time_t t);
 static void push_path(const char *path);
+static const char *standard_suffix(vhdl_standard_t std);
+static ident_t upcase_name(const char *name);
 
 /* ========================================================================= */
 /* -- PRIVATE DATA --------------------------------------------------------- */

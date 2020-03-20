@@ -306,7 +306,7 @@ static op_t *emit_index_check_null(vcode_reg_t rlow, vcode_reg_t rhigh,
 static vcode_reg_t emit_logical(vcode_op_t op, vcode_reg_t lhs,
   vcode_reg_t rhs);
 static vcode_reg_t emit_logical_identity(vcode_op_t op, vcode_reg_t reg,
-  _Bool b);
+  bool b);
 static vcode_reg_t emit_signal_flag(vcode_op_t opkind, vcode_reg_t nets,
   vcode_reg_t len);
 static vcode_reg_t emit_uarray_op(vcode_op_t o, vcode_type_t rtype,
@@ -329,7 +329,7 @@ static int vcode_dump_var(vcode_var_t var);
 static op_t *vcode_find_definition(vcode_reg_t reg);
 static op_t *vcode_op_data(int op);
 static void vcode_pretty_print_int(int64_t n);
-static _Bool vcode_read_unit(fbuf_t *f, ident_rd_ctx_t ident_rd_ctx);
+static bool vcode_read_unit(fbuf_t *f, ident_rd_ctx_t ident_rd_ctx);
 static reg_t *vcode_reg_data(vcode_reg_t reg);
 static void vcode_registry_add(vcode_unit_t vu);
 static signal_t *vcode_signal_data(vcode_signal_t sig);
@@ -338,7 +338,7 @@ static unsigned vcode_unit_calc_depth(vcode_unit_t unit);
 static var_t *vcode_var_data(vcode_var_t var);
 static void vcode_write_unit(vcode_unit_t unit, fbuf_t *f,
   ident_wr_ctx_t ident_wr_ctx);
-static _Bool vtype_is_pointer(vcode_type_t type, vtype_kind_t to);
+static bool vtype_is_pointer(vcode_type_t type, vtype_kind_t to);
 static vcode_type_t vtype_new(vtype_t *new);
 
 /* ========================================================================= */
