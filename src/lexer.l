@@ -1,28 +1,31 @@
-/* -*- mode: c; c-basic-offset: 3 -*- */
+/* ========================================================================= **
+**                               ____ _   _______                            **
+**                              / __ \ | / / ___/                            **
+**                             / / / / |/ / /__                              **
+**                            /_/ /_/|___/\___/                              **
+**                                                                           **
+** ========================================================================= **
+**                         OPEN SOURCE VHDL COMPILER                         **
+** ========================================================================= **
+** This file is part of the NVC VHDL Compiler                                **
+** Copyright (C) Nick Gasson <nick@nickg.me.uk>                              **
+** All Rights Reserved.                                                      **
+**                                                                           **
+** Permission to use, copy, modify, and/or distribute this software for any  **
+** purpose is subject to the terms specified in COPYING.                     **
+** ========================================================================= */
 
-/*
- *  Copyright (C) 2011-2019  Nick Gasson
- *
- *  This program is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-
-
+/* Flex Directives */
 %option noyywrap
 %option nounput
 %option noinput
 
 %{
+/* ========================================================================= */
+/* -- INCLUSIONS ----------------------------------------------------------- */
+/* ========================================================================= */
+
+/* Interface Inclusions */
 #include "tree.h"
 #include "util.h"
 #include "token.h"
@@ -32,13 +35,25 @@
 #include <math.h>
 #include <string.h>
 
+/* System Inclusions */
+
+/* Project Inclusions */
+
+/* ========================================================================= */
+/* -- PRIVATE DEFINITIONS -------------------------------------------------- */
+/* ========================================================================= */
+
+#define YY_USER_ACTION begin_token(yytext);
+
+/* ========================================================================= */
+/* -- PRIVATE MACROS ------------------------------------------------------- */
+/* ========================================================================= */
+
 #define YY_INPUT(buf, result, max_size) {    \
       result = get_next_char(buf, max_size); \
       if (result <= 0)                       \
          result = YY_NULL;                   \
    }
-
-#define YY_USER_ACTION begin_token(yytext);
 
 #define TOKEN(t) return (last_token = (t))
 
@@ -54,6 +69,25 @@
 #define TOKEN_00(t) TOKEN_LRM(t, STD_00)
 #define TOKEN_08(t) TOKEN_LRM(t, STD_08)
 
+/* ========================================================================= */
+/* -- PRIVATE TYPEDEFS ----------------------------------------------------- */
+/* ========================================================================= */
+
+/* ========================================================================= */
+/* -- PRIVATE STRUCTURES --------------------------------------------------- */
+/* ========================================================================= */
+
+/* ========================================================================= */
+/* -- INTERNAL FUNCTION PROTOTYPES ----------------------------------------- */
+/* ========================================================================= */
+
+void begin_token(char *tok);
+int get_next_char(char *b, int max_buffer);
+
+/* ========================================================================= */
+/* -- STATIC FUNCTION PROTOTYPES ------------------------------------------- */
+/* ========================================================================= */
+
 static int parse_id(const char *str);
 static int parse_ex_id(const char *str);
 static int parse_bit_string(const char *str);
@@ -62,14 +96,27 @@ static int parse_decimal_literal(const char *str);
 static int parse_based_literal(const char *str);
 static int resolve_ir1045(void);
 
+/* ========================================================================= */
+/* -- PRIVATE DATA --------------------------------------------------------- */
+/* ========================================================================= */
+
 static int last_token = -1;
 
-extern loc_t yylloc;
+/* ========================================================================= */
+/* -- EXPORTED DATA -------------------------------------------------------- */
+/* ========================================================================= */
 
+/* ========================================================================= */
+/* -- STATIC ASSERTIONS ---------------------------------------------------- */
+/* ========================================================================= */
+
+/* ========================================================================= */
+/* -- EXPORTED FUNCTION DEFINITIONS ---------------------------------------- */
+/* ========================================================================= */
+
+extern loc_t yylloc;
 yylval_t yylval;
 
-void begin_token(char *tok);
-int get_next_char(char *b, int max_buffer);
 %}
 
 ID              ?i:[a-z][a-z_0-9]*
@@ -368,63 +415,97 @@ SYNOPSYS      ?:synopsys
 .                 { TOKEN(tERROR); }
 %%
 
-static int resolve_ir1045(void)
-{
-   // See here for discussion:
-   //   http://www.eda-stds.org/isac/IRs-VHDL-93/IR1045.txt
-   // The set of tokens that may precede a character literal is
-   // disjoint from that which may precede a single tick token.
+/* ========================================================================= */
+/* -- INTERNAL FUNCTION DEFINITIONS ---------------------------------------- */
+/* ========================================================================= */
 
-   switch (last_token) {
-   case tRSQUARE:
-   case tRPAREN:
-   case tALL:
-   case tID:
-      // Cannot be a character literal
-      return 0;
-   default:
-      return 1;
-   }
-}
+/* ========================================================================= */
+/* -- STATIC FUNCTION DEFINITIONS ------------------------------------------ */
+/* ========================================================================= */
 
-static int parse_id(const char *str)
-{
-   char *p = (yylval.s = xmalloc(strlen(str) + 1));
-   while (*str) {
-      *p++ = toupper((int)*str);
+static int
+resolve_ir1045 (
+  void
+) {
+  // See here for discussion:
+  //   http://www.eda-stds.org/isac/IRs-VHDL-93/IR1045.txt
+  // The set of tokens that may precede a character literal is
+  // disjoint from that which may precede a single tick token.
+
+  switch (last_token)
+  {
+    case tRSQUARE:
+    case tRPAREN:
+    case tALL:
+    case tID:
+      {
+        // Cannot be a character literal
+        return (0);
+      }
+
+    default:
+      return (1);
+  }
+} /* resolve_ir1045() */
+
+/* ------------------------------------------------------------------------- */
+
+static int
+parse_id (
+  const char *str
+) {
+  char *p = (yylval.s = xmalloc(strlen(str) + 1));
+
+  while (*str) {
+    *p++ = toupper((int) *str);
+    str++;
+  }
+  *p = '\0';
+
+  TOKEN(tID);
+} /* parse_id() */
+
+/* ------------------------------------------------------------------------- */
+
+static int
+parse_ex_id (
+  const char *str
+) {
+  /* Copy of input */
+  char *p = (yylval.s = xmalloc(strlen(str) + 1));
+
+  /* Replacing double '\\' character by single '\\' */
+  /* Begins after first character */
+  *p++ = *str++;
+  while (*str) {
+    if ((*str == '\\') && (*(str+1) == '\\')) {
       str++;
-   }
-   *p = '\0';
+    }
+    *p++ = *str++;
+  }
+  /* Copy last character which is null character */
+  *p = '\0';
 
-   TOKEN(tID);
-}
+  TOKEN(tID);
+} /* parse_ex_id() */
 
-static int parse_ex_id(const char *str)
-{
-   /* Copy of input */
-   char *p = (yylval.s = xmalloc(strlen(str) + 1));
+/* ------------------------------------------------------------------------- */
 
-   /* Replacing double '\\' character by single '\\' */
-   /* Begins after first character */
-   *p++ = *str++;
-   while (*str) {
-      if ((*str == '\\') && (*(str+1) == '\\')) str++;
-      *p++ = *str++;
-   }
-   /* Copy last character which is null character */
-   *p = '\0';
+static void
+strip_underscores (
+  char *s
+) {
+  char *p;
 
-   TOKEN(tID);
-}
+  for (p = s; *s != '\0'; s++) {
+    if (*s != '_') {
+      *p++ = *s;
+    }
+  }
+  *p = '\0';
+} /* strip_underscores() */
 
-static void strip_underscores(char *s)
-{
-   char *p;
-   for (p = s; *s != '\0'; s++)
-      if (*s != '_')
-         *p++ = *s;
-   *p = '\0';
-}
+/* ------------------------------------------------------------------------- */
 
 /**
  * \fn static int parse_decimal_literal (const char *str)
@@ -437,46 +518,52 @@ static void strip_underscores(char *s)
  * TOKEN(tERROR) if no '.' found and '-' found,
  * else TOKEN(tREAL).
  */
-static int parse_decimal_literal (const char *str)
-{
-   int tok = tERROR;
-   /* Copy of input text */
-   char *tmp LOCAL = xstrdup(str);
-   /* Stripping '_' character */
-   strip_underscores(tmp);
+static int
+parse_decimal_literal (
+  const char *str
+) {
+  int tok = tERROR;
+  /* Copy of input text */
+  char *tmp LOCAL = xstrdup(str);
 
-   /* Find first occurences of '.' */
-   char *dot = strpbrk(tmp, ".");
+  /* Stripping '_' character */
+  strip_underscores(tmp);
 
-   /* Integer literals */
-   if (dot == NULL) {
-      /* Find first occurences of 'e' or 'E' */
-      char *sign = strpbrk(tmp, "-");
-      char *val  = strtok(tmp, "eE");
-      char *exp  = strtok(NULL, "eE");
+  /* Find first occurences of '.' */
+  char *dot = strpbrk(tmp, ".");
 
-      /* String to long long */
-      yylval.n = atoll(val);
+  /* Integer literals */
+  if (dot == NULL) {
+    /* Find first occurences of 'e' or 'E' */
+    char *sign = strpbrk(tmp, "-");
+    char *val = strtok(tmp, "eE");
+    char *exp = strtok(NULL, "eE");
 
-      /* String to long long (atoll function manages the sign) */
-      long long int e = (exp ? atoll(exp) : 0);
+    /* String to long long */
+    yylval.n = atoll(val);
 
-      /* Minus sign forbidden for an integer literal */
-      if (e >= 0) {
-         /* Updating val */
-         for (; e > 0; e--) yylval.n *= 10;
+    /* String to long long (atoll function manages the sign) */
+    long long int e = (exp ? atoll(exp) : 0);
 
-         tok = (sign == NULL) ? tINT : tERROR;
+    /* Minus sign forbidden for an integer literal */
+    if (e >= 0) {
+      /* Updating val */
+      for ( ; e > 0; e--) {
+        yylval.n *= 10;
       }
-   }
-   else {
-      /* String to double */
-      yylval.d = strtod(tmp, NULL);
-      tok = tREAL;
-   }
 
-   TOKEN(tok);
-}
+      tok = (sign == NULL) ? tINT : tERROR;
+    }
+  } else {
+    /* String to double */
+    yylval.d = strtod(tmp, NULL);
+    tok = tREAL;
+  }
+
+  TOKEN(tok);
+} /* parse_decimal_literal() */
+
+/* ------------------------------------------------------------------------- */
 
 /**
  * \fn static int parse_based_literal (const char *str)
@@ -490,67 +577,76 @@ static int parse_decimal_literal (const char *str)
  * TOKEN(tERROR) if the base is not at least 2 or at most 16,
  * else TOKEN(tREAL).
  */
-static int parse_based_literal (const char *str)
-{
-   int tok = tERROR;
-   /* Copy of input text */
-   char *tmp = xstrdup(str);
-   /* Stripping '_' character */
-   strip_underscores(tmp);
+static int
+parse_based_literal (
+  const char *str
+) {
+  int tok = tERROR;
+  /* Copy of input text */
+  char *tmp = xstrdup(str);
 
-   /* Find first occurences of '.' */
-   char *dot  = strpbrk(tmp, ".");
-   char *sign = strpbrk(tmp, "-");
-   /* Find first occurences of '#', ':', 'e' or 'E' */
-   char *base = strtok(tmp, "#:");
-   char *val  = strtok(NULL, "#:");
-   char *exp  = strtok(NULL, "eE");
+  /* Stripping '_' character */
+  strip_underscores(tmp);
 
-   /* base must be at least 2 and at most 16 */
-   if ((2 <= atoi(base)) && (atoi(base) <= 16)) {
-      /* Integer literals */
-      if (dot == NULL) {
-         char *eptr;
-         /* String to long long */
-         yylval.n = strtoll(val, &eptr, atoi(base));
+  /* Find first occurences of '.' */
+  char *dot = strpbrk(tmp, ".");
+  char *sign = strpbrk(tmp, "-");
+  /* Find first occurences of '#', ':', 'e' or 'E' */
+  char *base = strtok(tmp, "#:");
+  char *val = strtok(NULL, "#:");
+  char *exp = strtok(NULL, "eE");
 
-         /* String to long long (atoll function manages the sign) */
-         long long int e = (exp ? atoll(exp) : 0);
+  /* base must be at least 2 and at most 16 */
+  if ((2 <= atoi(base)) && (atoi(base) <= 16)) {
+    /* Integer literals */
+    if (dot == NULL) {
+      char *eptr;
+      /* String to long long */
+      yylval.n = strtoll(val, &eptr, atoi(base));
 
-         /* Minus sign forbidden for an integer literal */
-         if (e >= 0) {
-            /* Updating val */
-            for (; e > 0; e--) yylval.n *= atoi(base);
+      /* String to long long (atoll function manages the sign) */
+      long long int e = (exp ? atoll(exp) : 0);
 
-            tok = ((*eptr == '\0') && (sign == NULL)) ? tINT : tERROR;
-         }
+      /* Minus sign forbidden for an integer literal */
+      if (e >= 0) {
+        /* Updating val */
+        for ( ; e > 0; e--) {
+          yylval.n *= atoi(base);
+        }
+
+        tok = ((*eptr == '\0') && (sign == NULL)) ? tINT : tERROR;
       }
-      else {
-         char *eptr_integer, *eptr_rational;
-         char *integer  = strtok(val, ".");
-         char *rational = strtok(NULL, ".");
+    } else {
+      char *eptr_integer, *eptr_rational;
+      char *integer = strtok(val, ".");
+      char *rational = strtok(NULL, ".");
 
-         yylval.d = (double) strtoll(integer, &eptr_integer, atoi(base));
+      yylval.d = (double) strtoll(integer, &eptr_integer, atoi(base));
 
-         double tmp = (double) strtoll(rational, &eptr_rational, atoi(base));
-         tmp *= pow((double) atoi(base), (double) ((long int) (0-strlen(rational))));
+      double tmp = (double) strtoll(rational, &eptr_rational, atoi(base));
+      tmp *= pow((double) atoi(base), (double) ((long int) (0-strlen(
+            rational))));
 
-         yylval.d += tmp;
+      yylval.d += tmp;
 
-         /* String to long long (atoll function manages the sign) */
-         long long int e = (exp ? atoll(exp) : 0);
+      /* String to long long (atoll function manages the sign) */
+      long long int e = (exp ? atoll(exp) : 0);
 
-         if (e != 0)
-            yylval.d *= pow((double) atoi(base), (double) e);
-
-         tok = ((*eptr_integer == '\0') && (*eptr_rational == '\0')) ? tREAL : tERROR;
+      if (e != 0) {
+        yylval.d *= pow((double) atoi(base), (double) e);
       }
-   }
-   /* Deleting local allocation */
-   free(tmp);
 
-   TOKEN(tok);
-}
+      tok =
+        ((*eptr_integer == '\0') && (*eptr_rational == '\0')) ? tREAL : tERROR;
+    }
+  }
+  /* Deleting local allocation */
+  free(tmp);
+
+  TOKEN(tok);
+} /* parse_based_literal() */
+
+/* ------------------------------------------------------------------------- */
 
 /**
  * \fn static int parse_string (const char *str)
@@ -564,25 +660,31 @@ static int parse_based_literal (const char *str)
  * (string_literal ::= " { graphic_character } ").
  * \return TOKEN(tSTRING).
  */
-static int parse_string(const char *str)
-{
-   /* Copy of input */
-   char *s = (yylval.s = xstrdup(str));
+static int
+parse_string (
+  const char *str
+) {
+  /* Copy of input */
+  char *s = (yylval.s = xstrdup(str));
 
-   /* Replacing double '\"' character by single '\"' */
-   /* or double '%' character by single '%' */
-   /* Begins after first character */
-   s++;
-   char *p = s;
-   while (*p) {
-      if ((*p == *(yylval.s)) && (*(p+1) == *(yylval.s))) p++;
-      *s++ = *p++;
-   }
-   /* Copy last character which is null character */
-   *s = *p;
+  /* Replacing double '\"' character by single '\"' */
+  /* or double '%' character by single '%' */
+  /* Begins after first character */
+  s++;
+  char *p = s;
+  while (*p) {
+    if ((*p == *(yylval.s)) && (*(p+1) == *(yylval.s))) {
+      p++;
+    }
+    *s++ = *p++;
+  }
+  /* Copy last character which is null character */
+  *s = *p;
 
-   TOKEN(tSTRING);
-}
+  TOKEN(tSTRING);
+} /* parse_string() */
+
+/* ------------------------------------------------------------------------- */
 
 /**
  * \fn static int parse_bit_string (const char *str)
@@ -593,23 +695,33 @@ static int parse_string(const char *str)
  * (bit_string_literal ::= base_specifier " [ bit_value ] ").
  * \return TOKEN(tBITSTRING).
  */
-static int parse_bit_string(const char *str)
-{
-   /* Copy of input */
-   char *p = (yylval.s = xstrdup(str));
+static int
+parse_bit_string (
+  const char *str
+) {
+  /* Copy of input */
+  char *p = (yylval.s = xstrdup(str));
 
-   /* Stripping '_' character */
-   strip_underscores(p);
+  /* Stripping '_' character */
+  strip_underscores(p);
 
-   /* Replacing '\%' character by '\"' */
-   while (*p) {
-      switch (*p) {
+  /* Replacing '\%' character by '\"' */
+  while (*p) {
+    switch (*p)
+    {
       case '%':
-         *p = '\"';
-      default:
-         p++;
-      }
-   }
+        {
+          *p = '\"';
+        }
 
-   TOKEN(tBITSTRING);
-}
+      default:
+        p++;
+    }
+  }
+
+  TOKEN(tBITSTRING);
+} /* parse_bit_string() */
+
+/* :vi set ts=2 et sw=2: */
+/* -*- mode: c; c-basic-offset: 3 -*- */
+
