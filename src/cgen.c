@@ -311,9 +311,6 @@ static size_t max_link_args = 0;
 
 static hash_t *string_pool = NULL;
 
-static LLVMValueRef cgen_support_fn(const char *name);
-static LLVMValueRef cgen_resolution_wrapper(const vcode_res_elem_t *rdata);
-
 /* ========================================================================= */
 /* -- EXPORTED DATA -------------------------------------------------------- */
 /* ========================================================================= */
